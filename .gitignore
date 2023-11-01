@@ -1,0 +1,5 @@
+*/Debug
+*/.*
+*crp.c
+*cr_startup_lpc175x*
+*.launch
