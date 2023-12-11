@@ -1,13 +1,9 @@
 /*
- * Copyright 2022 NXP
- * NXP confidential.
- * This software is owned or controlled by NXP and may only be used strictly
- * in accordance with the applicable license terms.  By expressly accepting
- * such terms or by downloading, installing, activating and/or otherwise using
- * the software, you are agreeing that you have read, and that you agree to
- * comply with and are bound by, such license terms.  If you do not agree to
- * be bound by the applicable license terms, then you may not retain, install,
- * activate or otherwise use the software.
+ * Calcular cual es el tiempo máximo que se puede temporizar utilizando un timer en
+ * modo match con máximo valor de prescaler y máximo divisor de frecuencia de periférico.
+ *
+ * Especificar el valor a cargar en los correspondientes registros del timer.
+ * Suponer una frecuencia de core cclk de 50 Mhz.
  */
 
 #ifdef __USE_CMSIS
@@ -16,22 +12,43 @@
 
 #include <cr_section_macros.h>
 
-// TODO: insert other include files here
-
-// TODO: insert other definitions and declarations here
+void confTimer();
 
 int main(void) {
+	confTimer();
 
-    // TODO: insert code here
+	while(1){
 
-    // Force the counter to be placed into memory
-    volatile static int i = 0 ;
-    // Enter an infinite loop, just incrementing a counter
-    while(1) {
-        i++ ;
-        // "Dummy" NOP to allow source level single
-        // stepping of tight while() loop
-        __asm volatile ("nop");
-    }
-    return 0 ;
+	};
+}
+
+void confTimer(){
+	LPC_SC->PCON |= (0b1<1);//Habilito el clock del periferico
+	LPC_SC->PCLKSEL0 |= (0b11<<2); //Timer0 con PCLK = Clck/8 = 50*10⁻⁶/8 = 6.25*10⁻6
+
+	//Configuro el Timer0 en modo match y el P1.28 como MAT0.0
+	LPC_PINCON->PINSEL3 |= (0b11<24);
+
+	LPC_TIM0->PR = 0xFFFFFFFF; // Prescaler al maximo 2³²
+	LPC_TIM0->MR0 = 0xFFFFFFFF; // Match 0.0 al tener en timer counter 0 en = 2³²
+	LPC_TIM0->MCR |= (0b111); // el Match 0 interrumpe, resetea al desbordar y se detiene el timer0
+	LPC_TIM0->EMR |= (0b11<4);
+
+	LPC_TIM0->TCR = 0b11;//Habilito el timer y lo reseteo
+	LPC_TIM0->TCR &= ~(0b1<1);//Saco el reset
+
+	//Se producira una interrupcion cada: 1/PCLK * (PR + 1)*(MR0 + 1) = 6.25*6 * (2³² + 1) * (2³² + 1)
+	// sgundos: 1.153*10²⁶ s
+	// minutos: 1.92*10²⁴ min
+	// horas: 3.2*10²² h
+	// dias: 1.33*10²¹ dias
+	// años: 3.66*10¹⁸ años (edad del universo: 1.37*10¹⁰)
+
+	NVIC_EnableIRQ(TIMER0_IRQn);
+}
+
+void TIMER0_IRQHandler(){
+	//Hacer algo al interrumpir, ademas al llegar al MAT0.0 se toglea el P1.28
+
+	LPC_TIM0->IR &= ~(0b1); //Limpio la interrupcion
 }
